@@ -5,7 +5,7 @@
   const surface = document.body.dataset.surface || "web";
   const isExtension = typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
 
-  const sources = [
+  const demoSources = [
     {
       id: "s1",
       title: "Inteligencia artificial generativa en educacion superior: revision sistematica",
@@ -110,6 +110,10 @@
     sourceType: "all",
     pageSize: 10,
     page: 1,
+    liveResults: [],
+    liveStatuses: [],
+    isSearching: false,
+    lastSearch: "",
     premium: false,
     premiumDismissed: false,
     selected: new Set(["s1"]),
@@ -156,6 +160,39 @@
     }
   ];
 
+  const academicRepositories = [
+    {
+      name: "OpenAlex",
+      description: "Indice abierto de literatura academica, instituciones, autores y obras.",
+      search: searchOpenAlex
+    },
+    {
+      name: "Crossref",
+      description: "Metadatos DOI de articulos, libros, proceedings y documentos academicos.",
+      search: searchCrossref
+    },
+    {
+      name: "DOAJ",
+      description: "Revistas y articulos de acceso abierto revisados.",
+      search: searchDoaj
+    },
+    {
+      name: "Europe PMC",
+      description: "Repositorio abierto de articulos cientificos, PubMed Central y literatura biomédica.",
+      search: searchEuropePmc
+    },
+    {
+      name: "arXiv",
+      description: "Preprints de fisica, computacion, matematicas, estadistica y areas afines.",
+      search: searchArxiv
+    },
+    {
+      name: "Semantic Scholar",
+      description: "Indice academico semantico con resumenes, autores y enlaces.",
+      search: searchSemanticScholar
+    }
+  ];
+
   function normalize(value) {
     return String(value || "")
       .toLowerCase()
@@ -193,15 +230,270 @@
       const ratio = terms.length ? matches.length / terms.length : 0;
       return ratio >= 0.75 ? 50 + matches.length : 0;
     }
+    if (terms.length > 1 && matches.length < 2) return 0;
     return matches.length;
   }
 
+  function activeSources() {
+    return state.lastSearch ? state.liveResults : demoSources;
+  }
+
   function getResults() {
-    return sources
+    return activeSources()
       .map((source) => ({ ...source, score: scoreSource(source, state.query, state.mode) }))
       .filter((source) => source.score > 0)
+      .filter((source) => !isFutureDate(source.date))
       .filter((source) => state.sourceType === "all" || source.type === state.sourceType)
-      .sort((a, b) => new Date(b.date) - new Date(a.date) || b.score - a.score);
+      .sort((a, b) => sortableDate(b.date) - sortableDate(a.date) || b.score - a.score);
+  }
+
+  function isFutureDate(value) {
+    if (!value) return false;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return date > today;
+  }
+
+  function sortableDate(value) {
+    const date = new Date(value || "1900-01-01");
+    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+  }
+
+  function toIsoDate(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+  }
+
+  function compactText(value, max = 360) {
+    const text = Array.isArray(value) ? value.join(" ") : String(value || "");
+    return text
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, max);
+  }
+
+  function inferTypeFromText(...values) {
+    const text = normalize(values.join(" "));
+    if (/tesis|thesis|dissertation/.test(text)) return "Tesis";
+    if (/book|libro/.test(text)) return "Libro";
+    if (/report|informe/.test(text)) return "Informe";
+    if (/guide|guia|manual/.test(text)) return "Guia";
+    if (/preprint/.test(text)) return "Preprint";
+    return "Articulo";
+  }
+
+  function uniqueResults(items) {
+    const seen = new Set();
+    return items.filter((item) => {
+      const key = normalize(item.title).replace(/[^\w]+/g, " ").trim();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  async function fetchJson(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 9000);
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function fetchText(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 9000);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.text();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function searchOpenAlex(query, limit) {
+    const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}&sort=publication_date:desc`;
+    const data = await fetchJson(url);
+    return (data.results || []).map((item) => ({
+      id: `openalex-${item.id || item.doi || item.title}`,
+      repository: "OpenAlex",
+      title: item.title || "Sin titulo",
+      author: (item.authorships || []).slice(0, 4).map((auth) => auth.author?.display_name).filter(Boolean).join("; ") || "Autor no indicado",
+      institution: item.primary_location?.source?.display_name || item.host_venue?.display_name || "Repositorio academico",
+      date: item.publication_date || item.created_date || "",
+      type: inferTypeFromText(item.type, item.title),
+      url: item.primary_location?.landing_page_url || item.doi || item.id || "#",
+      abstract: item.abstract_inverted_index ? invertedAbstract(item.abstract_inverted_index) : "Metadatos academicos recuperados desde OpenAlex.",
+      methodology: "No especificada en metadatos",
+      reliability: item.doi ? "Alta: registro academico con DOI o metadatos abiertos." : "Media: verificar fuente original.",
+      sourceProvider: "OpenAlex"
+    }));
+  }
+
+  async function searchCrossref(query, limit) {
+    const url = `https://api.crossref.org/works?query=${encodeURIComponent(query)}&rows=${limit}&sort=published&order=desc`;
+    const data = await fetchJson(url);
+    return (data.message?.items || []).map((item) => {
+      const authors = (item.author || []).slice(0, 4).map((author) => [author.given, author.family].filter(Boolean).join(" ")).filter(Boolean);
+      const dateParts = item.published?.["date-parts"]?.[0] || item.created?.["date-parts"]?.[0] || [];
+      return {
+        id: `crossref-${item.DOI || item.URL || item.title?.[0]}`,
+        repository: "Crossref",
+        title: item.title?.[0] || "Sin titulo",
+        author: authors.join("; ") || "Autor no indicado",
+        institution: item["container-title"]?.[0] || item.publisher || "Crossref",
+        date: toIsoDate(dateParts.length ? dateParts.join("-") : ""),
+        type: inferTypeFromText(item.type, item.subtype, item.title?.[0]),
+        url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : "#"),
+        abstract: compactText(item.abstract || "Metadatos DOI recuperados desde Crossref."),
+        methodology: "No especificada en metadatos",
+        reliability: item.DOI ? "Alta: registro DOI en Crossref." : "Media: verificar fuente original.",
+        sourceProvider: "Crossref"
+      };
+    });
+  }
+
+  async function searchDoaj(query, limit) {
+    const url = `https://doaj.org/api/search/articles/${encodeURIComponent(query)}?pageSize=${limit}`;
+    const data = await fetchJson(url);
+    return (data.results || []).map((entry) => {
+      const item = entry.bibjson || {};
+      const authors = (item.author || []).slice(0, 4).map((author) => author.name).filter(Boolean);
+      const journal = item.journal?.title || item.publisher || "DOAJ";
+      const link = (item.link || []).find((candidate) => candidate.url)?.url;
+      return {
+        id: `doaj-${entry.id || item.identifier?.[0]?.id || item.title}`,
+        repository: "DOAJ",
+        title: item.title || "Sin titulo",
+        author: authors.join("; ") || "Autor no indicado",
+        institution: journal,
+        date: toIsoDate(item.year ? `${item.year}-01-01` : item.month ? `${item.year}-${item.month}-01` : ""),
+        type: "Articulo",
+        url: link || "#",
+        abstract: compactText(item.abstract || "Articulo de revista de acceso abierto recuperado desde DOAJ."),
+        methodology: "No especificada en metadatos",
+        reliability: "Alta: fuente registrada en DOAJ, verificar revista y articulo original.",
+        sourceProvider: "DOAJ"
+      };
+    });
+  }
+
+  async function searchEuropePmc(query, limit) {
+    const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}&format=json&pageSize=${limit}&sort=FIRST_PDATE_D desc`;
+    const data = await fetchJson(url);
+    return (data.resultList?.result || []).map((item) => ({
+      id: `europepmc-${item.id || item.doi || item.title}`,
+      repository: "Europe PMC",
+      title: item.title || "Sin titulo",
+      author: item.authorString || "Autor no indicado",
+      institution: item.journalTitle || item.source || "Europe PMC",
+      date: item.firstPublicationDate || item.pubYear || "",
+      type: inferTypeFromText(item.pubType, item.title),
+      url: item.doi ? `https://doi.org/${item.doi}` : item.pmcid ? `https://europepmc.org/article/PMC/${item.pmcid.replace(/^PMC/i, "")}` : `https://europepmc.org/article/${item.source || "MED"}/${item.id}`,
+      abstract: compactText(item.abstractText || "Resultado academico recuperado desde Europe PMC."),
+      methodology: "No especificada en metadatos",
+      reliability: item.doi ? "Alta: registro cientifico con DOI." : "Media-alta: verificar texto completo y revista.",
+      sourceProvider: "Europe PMC"
+    }));
+  }
+
+  async function searchArxiv(query, limit) {
+    const url = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${limit}&sortBy=submittedDate&sortOrder=descending`;
+    const xml = await fetchText(url);
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+    return Array.from(doc.querySelectorAll("entry")).map((entry) => ({
+      id: `arxiv-${entry.querySelector("id")?.textContent || entry.querySelector("title")?.textContent}`,
+      repository: "arXiv",
+      title: compactText(entry.querySelector("title")?.textContent || "Sin titulo", 220),
+      author: Array.from(entry.querySelectorAll("author name")).slice(0, 4).map((node) => node.textContent).join("; ") || "Autor no indicado",
+      institution: "arXiv",
+      date: toIsoDate(entry.querySelector("published")?.textContent),
+      type: "Preprint",
+      url: entry.querySelector("id")?.textContent || "#",
+      abstract: compactText(entry.querySelector("summary")?.textContent || "Preprint recuperado desde arXiv."),
+      methodology: "No especificada en metadatos",
+      reliability: "Media-alta: preprint academico, puede no estar revisado por pares.",
+      sourceProvider: "arXiv"
+    }));
+  }
+
+  async function searchSemanticScholar(query, limit) {
+    const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=title,authors,year,abstract,url,venue,publicationDate,externalIds,isOpenAccess,openAccessPdf`;
+    const data = await fetchJson(url);
+    return (data.data || []).map((item) => ({
+      id: `semantic-${item.paperId || item.url || item.title}`,
+      repository: "Semantic Scholar",
+      title: item.title || "Sin titulo",
+      author: (item.authors || []).slice(0, 4).map((author) => author.name).filter(Boolean).join("; ") || "Autor no indicado",
+      institution: item.venue || "Semantic Scholar",
+      date: item.publicationDate || (item.year ? `${item.year}-01-01` : ""),
+      type: "Articulo",
+      url: item.openAccessPdf?.url || item.url || "#",
+      abstract: compactText(item.abstract || "Resultado academico recuperado desde Semantic Scholar."),
+      methodology: "No especificada en metadatos",
+      reliability: item.externalIds?.DOI ? "Alta: registro con DOI enlazado." : "Media: verificar fuente original.",
+      sourceProvider: "Semantic Scholar"
+    }));
+  }
+
+  function invertedAbstract(index = {}) {
+    const words = [];
+    Object.entries(index).forEach(([word, positions]) => {
+      (positions || []).forEach((position) => {
+        words[position] = word;
+      });
+    });
+    return compactText(words.filter(Boolean).join(" ") || "Metadatos academicos recuperados desde OpenAlex.");
+  }
+
+  async function runFederatedSearch() {
+    const query = state.query.trim();
+    state.page = 1;
+    if (!query) {
+      state.lastSearch = "";
+      state.liveResults = [];
+      state.liveStatuses = [];
+      state.selected = new Set(["s1"]);
+      render();
+      return;
+    }
+    state.isSearching = true;
+    state.liveStatuses = academicRepositories.map((repo) => ({ name: repo.name, status: "Buscando" }));
+    render();
+    const perProvider = Math.min(20, Math.max(8, Math.ceil(state.pageSize / 2)));
+    const settled = await Promise.allSettled(academicRepositories.map((repo) => repo.search(query, perProvider)));
+    const results = [];
+    const statuses = [];
+    settled.forEach((result, index) => {
+      const repo = academicRepositories[index];
+      if (result.status === "fulfilled") {
+        results.push(...result.value);
+        statuses.push({ name: repo.name, status: `${result.value.length} resultados` });
+      } else {
+        statuses.push({ name: repo.name, status: "No disponible desde el navegador" });
+      }
+    });
+    state.liveResults = uniqueResults(results).sort((a, b) => sortableDate(b.date) - sortableDate(a.date));
+    state.liveStatuses = statuses;
+    state.lastSearch = query;
+    state.selected = new Set();
+    state.isSearching = false;
+    persist();
+    render();
   }
 
   function escapeHtml(value) {
@@ -270,6 +562,10 @@
             </select>
           </label>
           <p class="ordering">Ordenado desde los resultados mas recientes hasta los mas antiguos.</p>
+          <div class="repository-status">
+            <strong>Repositorios consultados</strong>
+            ${repositoryStatus()}
+          </div>
           <div class="button-row">
             <button class="btn btn-secondary" data-action="save-selected">Guardar fuente</button>
             <button class="btn btn-secondary" data-action="cite-selected">Generar cita</button>
@@ -288,7 +584,7 @@
           <div class="panel-head">
             <div>
               <h2>Resultados academicos</h2>
-              <p>${results.length} coincidencias estrictas o relevantes</p>
+              <p>${state.isSearching ? "Buscando en repositorios academicos..." : `${results.length} coincidencias estrictas o relevantes`}</p>
             </div>
             <div class="pager">
               <button data-action="prev-page" ${state.page === 1 ? "disabled" : ""}>Anterior</button>
@@ -297,7 +593,7 @@
             </div>
           </div>
           <div class="result-list">
-            ${pageResults.map(resultCard).join("") || '<div class="empty">No hay resultados relacionados. Prueba busqueda exploratoria o una frase menos restrictiva.</div>'}
+            ${state.isSearching ? '<div class="empty">Consultando OpenAlex, Crossref, DOAJ, arXiv y Semantic Scholar...</div>' : pageResults.map(resultCard).join("") || '<div class="empty">No hay resultados relacionados. Prueba busqueda exploratoria o una frase menos restrictiva.</div>'}
           </div>
         </section>
       </section>
@@ -384,7 +680,7 @@
       <section id="inicio" class="docs-hero">
         <div>
           <h1>Documentacion de Academic Finder IA</h1>
-          <p>Demo publica y extension Chrome para buscar fuentes academicas, ordenar resultados desde lo mas reciente, generar citas y preparar resumenes IA breves en espanol.</p>
+          <p>Demo publica y extension Chrome para buscar en repositorios academicos abiertos, ordenar resultados desde lo mas reciente, generar citas y preparar resumenes IA breves en espanol.</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#demo">Probar demo</a>
             <a class="btn btn-secondary" href="dist/academic-finder-ia-extension.zip" download>Descargar extension</a>
@@ -414,7 +710,7 @@
       <section id="demo" class="docs-section">
         <div class="section-heading">
           <h2>Demo funcional para GitHub Pages</h2>
-          <p>Usa el explorador, escribe una busqueda, presiona <strong>Buscar</strong> o Enter, filtra por tipo de fuente y exporta los resultados seleccionados.</p>
+          <p>Usa el explorador, escribe una busqueda, presiona <strong>Buscar</strong> o Enter y la pagina consultara indices y repositorios abiertos como OpenAlex, Crossref, DOAJ, Europe PMC, arXiv y Semantic Scholar.</p>
         </div>
         ${appMarkup}
       </section>
@@ -422,7 +718,7 @@
       <section id="descarga" class="docs-section docs-two-col">
         <div>
           <h2>Descargar la app</h2>
-          <p>Descarga el paquete de extension Chrome listo para cargar en modo desarrollador. Incluye popup, panel lateral, buscador, exportacion, proveedor IA y configuracion premium demo.</p>
+          <p>Descarga el paquete de extension Chrome listo para cargar en modo desarrollador. Incluye popup, panel lateral, busqueda federada, exportacion, proveedor IA y configuracion premium demo.</p>
           <a class="btn btn-primary" href="dist/academic-finder-ia-extension.zip" download>Descargar Academic Finder IA</a>
         </div>
         <div class="docs-note">
@@ -496,10 +792,22 @@
       { value: "all", label: "Todas las fuentes" },
       { value: "Articulo", label: "Articulos" },
       { value: "Tesis", label: "Tesis" },
+      { value: "Preprint", label: "Preprints" },
       { value: "Informe", label: "Informes" },
       { value: "Libro", label: "Libros" },
       { value: "Guia", label: "Guias" }
     ];
+  }
+
+  function repositoryStatus() {
+    const statuses = state.liveStatuses.length
+      ? state.liveStatuses
+      : academicRepositories.map((repo) => ({ name: repo.name, status: "Listo" }));
+    return `
+      <div class="repo-list">
+        ${statuses.map((item) => `<span><b>${escapeHtml(item.name)}</b>${escapeHtml(item.status)}</span>`).join("")}
+      </div>
+    `;
   }
 
   function premiumBanner() {
@@ -527,6 +835,7 @@
         </label>
         <h3>${escapeHtml(item.title)}</h3>
         <p class="meta">${escapeHtml(item.author)} · ${escapeHtml(item.institution)}</p>
+        <p class="source-chip">${escapeHtml(item.repository || item.sourceProvider || "Fuente academica")}</p>
         <p>${escapeHtml(item.abstract)}</p>
         <div class="card-actions">
           <button data-action="toggle-save" data-id="${item.id}">${state.saved.has(item.id) ? "Guardado" : "Guardar fuente"}</button>
@@ -542,21 +851,24 @@
   }
 
   function formatDate(date) {
+    if (!date || Number.isNaN(new Date(date).getTime())) return "s/f";
     return new Intl.DateTimeFormat("es-PE", { year: "numeric", month: "short", day: "2-digit" }).format(new Date(date));
   }
 
   function selectedSources() {
-    return sources.filter((item) => state.selected.has(item.id));
+    return activeSources().filter((item) => state.selected.has(item.id));
   }
 
   function citation(item) {
-    const year = new Date(item.date).getFullYear();
+    if (!item) return "";
+    const year = Number.isNaN(new Date(item.date).getTime()) ? "s/f" : new Date(item.date).getFullYear();
     return `${item.author} (${year}). ${item.title}. ${item.institution}. ${item.url}`;
   }
 
   function bibtex(item) {
-    const key = `${normalize(item.author).split(" ")[0] || "fuente"}${new Date(item.date).getFullYear()}`;
-    return `@misc{${key},\n  author = {${item.author}},\n  title = {${item.title}},\n  year = {${new Date(item.date).getFullYear()}},\n  institution = {${item.institution}},\n  url = {${item.url}}\n}`;
+    const year = Number.isNaN(new Date(item.date).getTime()) ? "s/f" : new Date(item.date).getFullYear();
+    const key = `${normalize(item.author).split(" ")[0] || "fuente"}${year}`;
+    return `@misc{${key},\n  author = {${item.author}},\n  title = {${item.title}},\n  year = {${year}},\n  institution = {${item.institution}},\n  url = {${item.url}}\n}`;
   }
 
   function exportSelected() {
@@ -702,7 +1014,8 @@
       state.mode = inferMode(state.query);
       state.page = 1;
       persist();
-      return render();
+      await runFederatedSearch();
+      return;
     }
     const action = actionTarget.dataset.action;
     if (actionTarget.dataset.mode) {
@@ -719,7 +1032,7 @@
     } else if (action === "save-selected") selectedSources().forEach((item) => state.saved.add(item.id));
     else if (action === "toggle-save") state.saved.has(actionTarget.dataset.id) ? state.saved.delete(actionTarget.dataset.id) : state.saved.add(actionTarget.dataset.id);
     else if (action === "cite-selected") state.output = selectedSources().map(citation).join("\n\n") || "Selecciona una fuente para generar cita.";
-    else if (action === "cite-one") state.output = citation(sources.find((item) => item.id === actionTarget.dataset.id));
+    else if (action === "cite-one") state.output = citation(activeSources().find((item) => item.id === actionTarget.dataset.id));
     else if (action === "export-selected") return exportSelected();
     else if (action === "run-ai") generateSummary();
     else if (action === "capture-page") return capturePageText();
@@ -728,7 +1041,7 @@
     render();
   });
 
-  root.addEventListener("submit", (event) => {
+  root.addEventListener("submit", async (event) => {
     if (!event.target.matches('[data-action="search-submit"]')) return;
     event.preventDefault();
     const input = event.target.querySelector('[data-field="query"]');
@@ -736,7 +1049,7 @@
     state.mode = inferMode(state.query);
     state.page = 1;
     persist();
-    render();
+    await runFederatedSearch();
   });
 
   load();

@@ -492,6 +492,45 @@ textarea {
   line-height: 1.4;
 }
 
+.repository-status {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f7faf9;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.repository-status strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.repo-list {
+  display: grid;
+  gap: 6px;
+}
+
+.repo-list span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(217, 224, 221, 0.75);
+  padding-bottom: 5px;
+}
+
+.repo-list span:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.repo-list b {
+  color: var(--accent);
+}
+
 .export-box {
   display: grid;
   gap: 10px;
@@ -561,6 +600,18 @@ button:disabled {
   color: var(--accent-2);
   font-size: 13px;
   font-weight: 750;
+}
+
+.source-chip {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0 0 10px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eef4f1;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .check-line {

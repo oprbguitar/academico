@@ -33,6 +33,7 @@ La clave de creador es solo para demostracion, pruebas y presentaciones comercia
 - Guardado de fuentes, generacion de citas y exportacion JSON/CSV/BibTeX.
 - Explorador de fuentes con rutas rapidas para tesis, articulos, instituciones y confiabilidad.
 - Boton Buscar y soporte Enter para que la busqueda no se interrumpa mientras el usuario escribe.
+- Busqueda federada real desde APIs publicas: OpenAlex, Crossref, DOAJ, Europe PMC, arXiv y Semantic Scholar cuando estan disponibles desde el navegador.
 
 ## Archivos principales
 
