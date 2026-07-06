@@ -1,5 +1,4 @@
 (function () {
-  const CREATOR_KEY = "PERULABS-CREATOR-2026";
   const providers = window.AcademicProviderMetadata || {};
   const root = document.getElementById("academic-finder-root");
   const surface = document.body.dataset.surface || "web";
@@ -114,16 +113,15 @@
     liveStatuses: [],
     isSearching: false,
     lastSearch: "",
-    premium: false,
-    premiumDismissed: false,
     selected: new Set(["s1"]),
     saved: new Set(),
     provider: "openai",
     profile: "Buscador academico",
     apiKey: "",
-    premiumKey: "",
+    model: (window.AcademicProviderAdapters?.openai?.defaultModel) || "",
     analysisText: "",
     output: "",
+    isGenerating: false,
     exportFormat: "json"
   };
 
@@ -516,75 +514,61 @@
       <section class="hero">
         <div>
           <h1>Academic Finder IA</h1>
-          <p>Busca fuentes academicas, prioriza coincidencias reales, guarda resultados y prepara citas con un asistente IA opcional.</p>
+          <p>Busca fuentes academicas confiables y resumelas con la IA de tu preferencia.</p>
         </div>
         <div class="hero-actions">
-          <button class="btn btn-secondary" data-action="open-premium">Premium</button>
-          ${surface !== "web" ? '<button class="btn btn-primary" data-action="open-sidepanel">Panel lateral</button>' : '<a class="btn btn-primary" href="#demo">Ver demo</a>'}
-        </div>
-      </section>
-
-      ${!state.premium && !state.premiumDismissed ? premiumBanner() : ""}
-
-      <section class="explorer-panel" aria-label="Explorador academico">
-        <div class="section-heading compact-heading">
-          <h2>Explorador academico</h2>
-          <p>Rutas rapidas para revisar tesis, articulos, instituciones y criterios de confiabilidad sin perder el orden por resultados recientes.</p>
-        </div>
-        <div class="explorer-grid">
-          ${explorerRoutes.map(explorerCard).join("")}
+          ${surface !== "web" ? '<button class="btn btn-primary" data-action="open-sidepanel">Abrir panel lateral</button>' : '<a class="btn btn-primary" href="#demo">Ir al buscador</a>'}
         </div>
       </section>
 
       <section id="demo" class="workspace">
-        <aside class="control-panel">
-          <form class="search-form" data-action="search-submit">
-            <label class="field">
-              <span>Busqueda academica</span>
-              <input data-field="query" type="search" value="${escapeHtml(state.query)}" placeholder="Autor, titulo exacto, institucion o tema">
+        <section class="search-panel">
+          <form class="search-form toolbar-row" data-action="search-submit">
+            <label class="field grow">
+              <span>1. Que quieres encontrar</span>
+              <input data-field="query" type="search" value="${escapeHtml(state.query)}" placeholder="Autor, titulo, institucion o tema">
             </label>
             <button class="btn btn-primary" type="submit">Buscar</button>
           </form>
-          <div class="segmented" role="group" aria-label="Modo de busqueda">
-            <button class="${state.mode === "exact" ? "active" : ""}" data-mode="exact">Busqueda exacta</button>
-            <button class="${state.mode === "broad" ? "active" : ""}" data-mode="broad">Busqueda exploratoria</button>
+          <div class="quick-links toolbar-row">
+            ${explorerRoutes.map(explorerChip).join("")}
           </div>
-          <label class="field">
-            <span>Tipo de fuente</span>
-            <select data-field="sourceType">
-              ${sourceTypeOptions().map((option) => `<option value="${option.value}" ${state.sourceType === option.value ? "selected" : ""}>${option.label}</option>`).join("")}
-            </select>
-          </label>
-          <label class="field">
-            <span>Resultados por pagina</span>
-            <select data-field="pageSize">
-              ${[10, 50, 100].map((size) => `<option value="${size}" ${state.pageSize === size ? "selected" : ""}>${size} resultados</option>`).join("")}
-            </select>
-          </label>
-          <p class="ordering">Ordenado desde los resultados mas recientes hasta los mas antiguos.</p>
-          <div class="repository-status">
-            <strong>Repositorios consultados</strong>
-            ${repositoryStatus()}
+          <div class="toolbar-row">
+            <div class="segmented" role="group" aria-label="Modo de busqueda">
+              <button class="${state.mode === "exact" ? "active" : ""}" data-mode="exact">Exacta</button>
+              <button class="${state.mode === "broad" ? "active" : ""}" data-mode="broad">Exploratoria</button>
+            </div>
+            <label class="field inline">
+              <span>Tipo</span>
+              <select data-field="sourceType">
+                ${sourceTypeOptions().map((option) => `<option value="${option.value}" ${state.sourceType === option.value ? "selected" : ""}>${option.label}</option>`).join("")}
+              </select>
+            </label>
+            <label class="field inline">
+              <span>Por pagina</span>
+              <select data-field="pageSize">
+                ${[10, 50, 100].map((size) => `<option value="${size}" ${state.pageSize === size ? "selected" : ""}>${size}</option>`).join("")}
+              </select>
+            </label>
           </div>
-          <div class="button-row">
-            <button class="btn btn-secondary" data-action="save-selected">Guardar fuente</button>
-            <button class="btn btn-secondary" data-action="cite-selected">Generar cita</button>
-          </div>
-          <div class="export-box">
+          <p class="status-line">${statusLine()}</p>
+          <div class="toolbar-row">
+            <button class="btn btn-secondary" data-action="save-selected">Guardar</button>
+            <button class="btn btn-secondary" data-action="cite-selected">Citar</button>
             <select data-field="exportFormat">
-              <option value="json" ${state.exportFormat === "json" ? "selected" : ""}>Exportar JSON</option>
-              <option value="csv" ${state.exportFormat === "csv" ? "selected" : ""}>Exportar CSV</option>
-              <option value="bibtex" ${state.exportFormat === "bibtex" ? "selected" : ""}>Exportar BibTeX</option>
+              <option value="json" ${state.exportFormat === "json" ? "selected" : ""}>JSON</option>
+              <option value="csv" ${state.exportFormat === "csv" ? "selected" : ""}>CSV</option>
+              <option value="bibtex" ${state.exportFormat === "bibtex" ? "selected" : ""}>BibTeX</option>
             </select>
             <button class="btn btn-primary" data-action="export-selected">Exportar seleccion</button>
           </div>
-        </aside>
+        </section>
 
         <section class="results-panel">
           <div class="panel-head">
             <div>
-              <h2>Resultados academicos</h2>
-              <p>${state.isSearching ? "Buscando en repositorios academicos..." : `${results.length} coincidencias estrictas o relevantes`}</p>
+              <h2>2. Resultados</h2>
+              <p>${state.isSearching ? "Buscando en repositorios academicos..." : `${results.length} resultados, del mas reciente al mas antiguo`}</p>
             </div>
             <div class="pager">
               <button data-action="prev-page" ${state.page === 1 ? "disabled" : ""}>Anterior</button>
@@ -593,68 +577,52 @@
             </div>
           </div>
           <div class="result-list">
-            ${state.isSearching ? '<div class="empty">Consultando OpenAlex, Crossref, DOAJ, arXiv y Semantic Scholar...</div>' : pageResults.map(resultCard).join("") || '<div class="empty">No hay resultados relacionados. Prueba busqueda exploratoria o una frase menos restrictiva.</div>'}
+            ${state.isSearching ? '<div class="empty">Consultando OpenAlex, Crossref, DOAJ, arXiv y Semantic Scholar...</div>' : pageResults.map(resultCard).join("") || '<div class="empty">Sin resultados. Prueba busqueda exploratoria o una frase mas simple.</div>'}
           </div>
         </section>
       </section>
 
-      <section class="ai-grid">
-        <section class="ai-panel ${state.premium ? "" : "locked-soft"}">
-          <div class="panel-head">
-            <div>
-              <h2>Resumen IA premium</h2>
-              <p>${state.premium ? "Activo con clave demo o futura licencia." : "Bloqueado, pero puedes seguir usando la version basica."}</p>
-            </div>
-            ${!state.premium ? '<button class="btn btn-primary" data-action="open-premium">Activar</button>' : '<span class="status-ok">Premium activo</span>'}
+      <section class="ai-panel">
+        <div class="panel-head">
+          <div>
+            <h2>3. Resumir con IA</h2>
+            <p>Pega tu propia API key del proveedor elegido para generar un resumen real.</p>
           </div>
-          <div class="provider-grid">
-            <label class="field">
-              <span>Proveedor IA</span>
-              <select data-field="provider">
-                ${Object.entries(providers).map(([key, value]) => `<option value="${key}" ${state.provider === key ? "selected" : ""}>${value.label}</option>`).join("")}
-              </select>
-            </label>
-            <label class="field">
-              <span>Perfil de analisis</span>
-              <select data-field="profile">
-                ${profiles.map((profile) => `<option value="${profile}" ${state.profile === profile ? "selected" : ""}>${profile}</option>`).join("")}
-              </select>
-            </label>
-            <label class="field">
-              <span>API key personal</span>
-              <input data-field="apiKey" type="password" value="${escapeHtml(state.apiKey)}" placeholder="Opcional para proveedores reales">
-            </label>
-          </div>
-          <div class="provider-note">
-            <strong>${provider.label || ""}</strong>
-            <p>${provider.guidance || ""}</p>
-            <p>${provider.endpointNote || ""}</p>
-            ${renderCategories(provider.categories)}
-          </div>
+        </div>
+        <div class="provider-grid">
           <label class="field">
-            <span>Texto o pagina para analizar</span>
-            <textarea data-field="analysisText" rows="6" placeholder="Pega texto academico, resumen, abstract o contenido copiado">${escapeHtml(state.analysisText)}</textarea>
+            <span>Proveedor</span>
+            <select data-field="provider">
+              ${Object.entries(providers).map(([key, value]) => `<option value="${key}" ${state.provider === key ? "selected" : ""}>${value.label}</option>`).join("")}
+            </select>
           </label>
-          <div class="button-row">
-            <button class="btn btn-secondary" data-action="capture-page">Copiar contenido para analizar</button>
-            <button class="btn btn-primary" data-action="run-ai">Generar resumen IA</button>
-          </div>
-          <div class="output">${state.output ? escapeHtml(state.output).replace(/\n/g, "<br>") : "La respuesta aparecera aqui en puntos breves y utiles."}</div>
-        </section>
-
-        <section class="premium-panel">
-          <h2>Activacion demo</h2>
-          <p>Ingresa la clave de creador para desbloquear funciones premium en esta version estatica.</p>
           <label class="field">
-            <span>Clave premium</span>
-            <input data-field="premiumKey" type="text" value="${escapeHtml(state.premiumKey)}" placeholder="PERULABS-CREATOR-2026">
+            <span>Modelo</span>
+            <select data-field="model">
+              ${modelOptions()}
+            </select>
           </label>
-          <div class="button-row">
-            <button class="btn btn-primary" data-action="activate-premium">Activar premium</button>
-            <button class="btn btn-secondary" data-action="close-premium">Cerrar y seguir gratis</button>
-          </div>
-          <p class="fine-print">Sistema demo no seguro para produccion. La validacion real debe moverse a un backend de licencias.</p>
-        </section>
+          <label class="field">
+            <span>Perfil</span>
+            <select data-field="profile">
+              ${profiles.map((profile) => `<option value="${profile}" ${state.profile === profile ? "selected" : ""}>${profile}</option>`).join("")}
+            </select>
+          </label>
+          <label class="field">
+            <span>API key</span>
+            <input data-field="apiKey" type="password" value="${escapeHtml(state.apiKey)}" placeholder="Pega aqui tu API key">
+          </label>
+        </div>
+        <p class="provider-hint">${provider.guidance || ""} ${escapeHtml(currentAdapter().freeNote || "")}</p>
+        <label class="field">
+          <span>Texto, pregunta o pagina para analizar</span>
+          <textarea data-field="analysisText" rows="5" placeholder="Escribe una pregunta, pega texto academico o el contenido copiado de una pagina">${escapeHtml(state.analysisText)}</textarea>
+        </label>
+        <div class="button-row">
+          <button class="btn btn-secondary" data-action="capture-page">Copiar contenido de la pagina</button>
+          <button class="btn btn-primary" data-action="run-ai" ${state.isGenerating ? "disabled" : ""}>${state.isGenerating ? "Generando..." : "Generar resumen"}</button>
+        </div>
+        <div class="output">${state.output ? escapeHtml(state.output).replace(/\n/g, "<br>") : "La respuesta aparecera aqui."}</div>
       </section>
     `;
     root.innerHTML = surface === "web" ? renderDocsPage(appMarkup) : appMarkup;
@@ -679,11 +647,11 @@
 
       <section id="inicio" class="docs-hero">
         <div>
-          <h1>Documentacion de Academic Finder IA</h1>
-          <p>Demo publica y extension Chrome para buscar en repositorios academicos abiertos, ordenar resultados desde lo mas reciente, generar citas y preparar resumenes IA breves en espanol.</p>
+          <h1>Encuentra y resume fuentes academicas en minutos</h1>
+          <p>Academic Finder IA busca a la vez en 6 repositorios academicos abiertos (OpenAlex, Crossref, DOAJ, Europe PMC, arXiv y Semantic Scholar), ordena por lo mas reciente, genera citas y resume con la IA que tu elijas usando tu propia API key.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#demo">Probar demo</a>
-            <a class="btn btn-secondary" href="dist/academic-finder-ia-extension.zip" download>Descargar extension</a>
+            <a class="btn btn-primary" href="#demo">Probar demo gratis</a>
+            <a class="btn btn-secondary" href="dist/academic-finder-ia-extension.zip" download>Descargar extension Chrome</a>
           </div>
         </div>
         <div class="docs-preview" aria-label="Vista previa de extension">
@@ -692,8 +660,8 @@
           </div>
           <div class="preview-panel">
             <strong>Panel lateral Chrome</strong>
-            <p>Abierto junto a repositorios, tesis, papers y paginas institucionales.</p>
-            <div class="mini-control">Busqueda exacta</div>
+            <p>Trabaja junto a repositorios, tesis, papers y paginas institucionales.</p>
+            <div class="mini-control">1. Buscar &middot; 2. Resultados &middot; 3. IA</div>
             <div class="mini-result"></div>
             <div class="mini-result short"></div>
           </div>
@@ -701,16 +669,16 @@
       </section>
 
       <section class="docs-grid" aria-label="Funciones principales">
-        ${docsCard("Orden reciente", "Los resultados se muestran desde la fecha de busqueda hacia fuentes mas antiguas.")}
-        ${docsCard("Precision", "Busqueda exacta para nombres, autores, instituciones, frases y titulos especificos.")}
-        ${docsCard("Paginacion", "Selector claro de 10, 50 o 100 resultados por pagina en demo y extension.")}
-        ${docsCard("Premium amable", "La ventana premium puede cerrarse y el modo basico sigue disponible.")}
+        ${docsCard("6 repositorios a la vez", "Una sola busqueda consulta OpenAlex, Crossref, DOAJ, Europe PMC, arXiv y Semantic Scholar.")}
+        ${docsCard("Siempre lo mas reciente", "Los resultados se ordenan desde la fecha actual hacia las fuentes mas antiguas.")}
+        ${docsCard("Citas y exportacion", "Genera citas al instante y exporta tu seleccion en JSON, CSV o BibTeX.")}
+        ${docsCard("IA con modelos gratis", "Elige proveedor y modelo (los gratuitos estan marcados) y pega tu propia API key.")}
       </section>
 
       <section id="demo" class="docs-section">
         <div class="section-heading">
-          <h2>Demo funcional para GitHub Pages</h2>
-          <p>Usa el explorador, escribe una busqueda, presiona <strong>Buscar</strong> o Enter y la pagina consultara indices y repositorios abiertos como OpenAlex, Crossref, DOAJ, Europe PMC, arXiv y Semantic Scholar.</p>
+          <h2>Pruebala aqui mismo</h2>
+          <p>Escribe una busqueda y presiona <strong>Buscar</strong>: la pagina consulta los repositorios academicos en vivo, sin registro ni instalacion.</p>
         </div>
         ${appMarkup}
       </section>
@@ -718,7 +686,7 @@
       <section id="descarga" class="docs-section docs-two-col">
         <div>
           <h2>Descargar la app</h2>
-          <p>Descarga el paquete de extension Chrome listo para cargar en modo desarrollador. Incluye popup, panel lateral, busqueda federada, exportacion, proveedor IA y configuracion premium demo.</p>
+          <p>Descarga el paquete de extension Chrome listo para cargar en modo desarrollador. Incluye popup, panel lateral, busqueda federada, exportacion y resumen IA con tu propia API key.</p>
           <a class="btn btn-primary" href="dist/academic-finder-ia-extension.zip" download>Descargar Academic Finder IA</a>
         </div>
         <div class="docs-note">
@@ -739,16 +707,15 @@
           </ol>
         </div>
         <div class="docs-note">
-          <h3>Clave demo</h3>
-          <p><code>PERULABS-CREATOR-2026</code></p>
-          <p>Solo sirve para pruebas, demo comercial y presentacion. No es autenticacion segura de produccion.</p>
+          <h3>Tu API key, tus datos</h3>
+          <p>La key se guarda solo en tu navegador y se usa unicamente para llamar directamente al proveedor de IA que elijas.</p>
         </div>
       </section>
 
       <section id="extension" class="docs-section docs-two-col">
         <div>
           <h2>Extension Chrome</h2>
-          <p>El popup incluye busqueda, modo exacto/exploratorio, resultados por pagina, guardado, citas, exportacion, resumen IA premium, proveedor, perfil y captura de contenido visible.</p>
+          <p>El popup incluye busqueda, modo exacto/exploratorio, resultados por pagina, guardado, citas, exportacion, resumen IA con tu propia key, proveedor, perfil y captura de contenido visible.</p>
         </div>
         <div class="docs-note">
           <h3>Panel lateral corregido</h3>
@@ -759,7 +726,7 @@
       <section id="ia" class="docs-section docs-two-col">
         <div>
           <h2>IA y proveedores</h2>
-          <p>Los metadatos de proveedores viven en <code>src/providerMetadata.js</code> para actualizar modelos y notas sin tocar la interfaz principal.</p>
+          <p>Soporta OpenAI, Anthropic, Gemini, OpenRouter, Groq, Mistral, NVIDIA y Cohere. El selector de modelos marca con <strong>(Gratis)</strong> los que tienen nivel gratuito: por ejemplo Gemini Flash, los modelos de Groq y los modelos :free de OpenRouter. Tu API key se guarda solo en tu navegador.</p>
         </div>
         <div class="docs-note">
           <h3>Perfiles</h3>
@@ -778,11 +745,10 @@
     `;
   }
 
-  function explorerCard(route) {
+  function explorerChip(route) {
     return `
-      <button class="explorer-card" data-explorer-query="${escapeHtml(route.query)}" type="button">
-        <span>${escapeHtml(route.title)}</span>
-        <small>${escapeHtml(route.description)}</small>
+      <button class="chip" data-explorer-query="${escapeHtml(route.query)}" type="button" title="${escapeHtml(route.description)}">
+        ${escapeHtml(route.title)}
       </button>
     `;
   }
@@ -799,30 +765,21 @@
     ];
   }
 
-  function repositoryStatus() {
-    const statuses = state.liveStatuses.length
-      ? state.liveStatuses
-      : academicRepositories.map((repo) => ({ name: repo.name, status: "Listo" }));
-    return `
-      <div class="repo-list">
-        ${statuses.map((item) => `<span><b>${escapeHtml(item.name)}</b>${escapeHtml(item.status)}</span>`).join("")}
-      </div>
-    `;
+  function currentAdapter() {
+    return window.AcademicProviderAdapters?.[state.provider] || {};
   }
 
-  function premiumBanner() {
-    return `
-      <section class="premium-banner">
-        <div>
-          <strong>Funciones premium disponibles</strong>
-          <p>Resumen IA, perfiles avanzados y analisis de pagina estan bloqueados hasta activar premium. La busqueda basica sigue funcionando.</p>
-        </div>
-        <div class="button-row">
-          <button class="btn btn-primary" data-action="open-premium">Ver premium</button>
-          <button class="icon-btn" data-action="close-premium" aria-label="Cerrar ventana premium">x</button>
-        </div>
-      </section>
-    `;
+  function modelOptions() {
+    const adapter = currentAdapter();
+    const models = adapter.models || (adapter.defaultModel ? [{ id: adapter.defaultModel, label: adapter.defaultModel, free: false }] : []);
+    return models.map((model) => `<option value="${escapeHtml(model.id)}" ${state.model === model.id ? "selected" : ""}>${escapeHtml(model.label)}${model.free ? " (Gratis)" : ""}</option>`).join("");
+  }
+
+  function statusLine() {
+    if (state.isSearching) return "Buscando en 6 repositorios academicos abiertos...";
+    if (!state.liveStatuses.length) return "6 repositorios listos: OpenAlex, Crossref, DOAJ, Europe PMC, arXiv, Semantic Scholar.";
+    const found = state.liveStatuses.filter((item) => /\d/.test(item.status)).length;
+    return `Consultados 6 repositorios, ${found} respondieron con resultados.`;
   }
 
   function resultCard(item) {
@@ -844,10 +801,6 @@
         </div>
       </article>
     `;
-  }
-
-  function renderCategories(categories = {}) {
-    return `<div class="model-tags">${Object.entries(categories).map(([label, values]) => `<span><b>${label}:</b> ${escapeHtml(values.join(", "))}</span>`).join("")}</div>`;
   }
 
   function formatDate(date) {
@@ -898,25 +851,60 @@
     URL.revokeObjectURL(url);
   }
 
-  function generateSummary() {
-    if (!state.premium) {
-      state.output = "Funcion premium bloqueada. Puedes cerrar la ventana premium y seguir con busqueda, citas y exportacion basica.";
-      return;
-    }
-    const text = state.analysisText || selectedSources().map((item) => `${item.title}. ${item.abstract}`).join("\n");
-    if (!text.trim()) {
-      state.output = "Agrega texto o selecciona una fuente antes de generar el resumen.";
-      return;
-    }
-    state.output = [
-      `Perfil: ${state.profile}`,
-      "- Idea principal: " + text.trim().slice(0, 160) + (text.length > 160 ? "..." : ""),
-      "- Relevancia academica: util para ubicar argumentos, antecedentes y palabras clave.",
-      "- Metodologia: verificar si el texto declara muestra, enfoque, tecnica o criterios de revision.",
-      "- Datos de cita: revisar autor, ano, titulo, institucion, URL y fecha de consulta antes de usar.",
-      "- Posible uso: tesis, trabajo escolar, articulo, informe o marco teorico segun el perfil elegido.",
-      "- Advertencia de confiabilidad: si faltan autores, metodologia o fuente original, citar con cautela."
+  function buildAiPrompt(text) {
+    return [
+      `Actua como asistente de investigacion academica para el perfil: ${state.profile}.`,
+      "Analiza el siguiente texto o consulta de busqueda y responde en espanol, en puntos breves y utiles que incluyan: idea principal, relevancia academica, metodologia detectada (si aplica), datos de cita disponibles y una advertencia de confiabilidad si falta informacion.",
+      "",
+      "Texto o consulta:",
+      text
     ].join("\n");
+  }
+
+  async function callAiProvider(providerKey, apiKey, prompt, model) {
+    const adapter = window.AcademicProviderAdapters?.[providerKey];
+    if (!adapter) throw new Error("Proveedor no soportado.");
+    const finalModel = model || adapter.defaultModel;
+    const response = await fetch(adapter.url(apiKey, finalModel), {
+      method: "POST",
+      headers: adapter.headers(apiKey),
+      body: adapter.body(prompt, finalModel)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = data?.error?.message || data?.message || `HTTP ${response.status}`;
+      throw new Error(message);
+    }
+    const text = adapter.extract(data);
+    if (!text) throw new Error("El proveedor no devolvio contenido reconocible.");
+    return text;
+  }
+
+  async function generateSummary() {
+    const apiKey = state.apiKey.trim();
+    if (!apiKey) {
+      state.output = "Pega tu API key del proveedor elegido para generar un resumen real con IA.";
+      return render();
+    }
+    const text = state.analysisText.trim() || selectedSources().map((item) => `${item.title}. ${item.abstract}`).join("\n");
+    if (!text.trim()) {
+      state.output = "Agrega texto, una consulta de busqueda o selecciona una fuente antes de generar el resumen.";
+      return render();
+    }
+    state.isGenerating = true;
+    state.output = "Consultando al proveedor de IA...";
+    render();
+    try {
+      const prompt = buildAiPrompt(text);
+      const result = await callAiProvider(state.provider, apiKey, prompt, state.model);
+      state.output = result.trim();
+    } catch (error) {
+      state.output = `No se pudo generar el resumen: ${error.message}. Revisa la API key, el modelo o si el proveedor permite llamadas desde el navegador.`;
+    } finally {
+      state.isGenerating = false;
+      persist();
+      render();
+    }
   }
 
   async function capturePageText() {
@@ -955,12 +943,10 @@
 
   function persist() {
     const data = {
-      premium: state.premium,
-      premiumDismissed: state.premiumDismissed,
       provider: state.provider,
       profile: state.profile,
       apiKey: state.apiKey,
-      premiumKey: state.premiumKey
+      model: state.model
     };
     localStorage.setItem("academicFinderState", JSON.stringify(data));
     if (isExtension) chrome.storage.local.set(data);
@@ -984,6 +970,9 @@
     } else if (field === "pageSize") {
       state.pageSize = Number(event.target.value);
       state.page = 1;
+    } else if (field === "provider") {
+      state.provider = event.target.value;
+      state.model = window.AcademicProviderAdapters?.[state.provider]?.defaultModel || "";
     } else {
       state[field] = event.target.value;
     }
@@ -1023,18 +1012,12 @@
       state.page = 1;
     } else if (action === "prev-page") state.page -= 1;
     else if (action === "next-page") state.page += 1;
-    else if (action === "close-premium") state.premiumDismissed = true;
-    else if (action === "open-premium") state.premiumDismissed = false;
-    else if (action === "activate-premium") {
-      const key = state.premiumKey.trim();
-      state.premium = key === CREATOR_KEY;
-      state.output = state.premium ? "Premium demo activado correctamente." : "Clave no valida para esta demo.";
-    } else if (action === "save-selected") selectedSources().forEach((item) => state.saved.add(item.id));
+    else if (action === "save-selected") selectedSources().forEach((item) => state.saved.add(item.id));
     else if (action === "toggle-save") state.saved.has(actionTarget.dataset.id) ? state.saved.delete(actionTarget.dataset.id) : state.saved.add(actionTarget.dataset.id);
     else if (action === "cite-selected") state.output = selectedSources().map(citation).join("\n\n") || "Selecciona una fuente para generar cita.";
     else if (action === "cite-one") state.output = citation(activeSources().find((item) => item.id === actionTarget.dataset.id));
     else if (action === "export-selected") return exportSelected();
-    else if (action === "run-ai") generateSummary();
+    else if (action === "run-ai") return generateSummary();
     else if (action === "capture-page") return capturePageText();
     else if (action === "open-sidepanel") return openSidePanel();
     persist();
