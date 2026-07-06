@@ -329,9 +329,72 @@ code {
 }
 
 .premium-banner,
+.explorer-panel,
 .workspace,
 .ai-grid {
   margin-top: 18px;
+}
+
+.explorer-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  background: linear-gradient(180deg, #ffffff, #f6faf8);
+  box-shadow: 0 8px 28px rgba(23, 42, 38, 0.06);
+}
+
+.compact-heading {
+  margin-bottom: 14px;
+}
+
+.compact-heading h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.compact-heading p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.explorer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.explorer-card {
+  display: grid;
+  gap: 8px;
+  min-height: 128px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 15px;
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(23, 42, 38, 0.05);
+}
+
+.explorer-card:hover,
+.explorer-card:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.explorer-card span {
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.explorer-card small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .premium-banner {
@@ -433,6 +496,16 @@ textarea {
   display: grid;
   gap: 10px;
   margin-top: 12px;
+}
+
+.search-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.search-form .field {
+  margin-bottom: 0;
 }
 
 .panel-head {
@@ -605,8 +678,10 @@ button:disabled {
 }
 
 .app-shell--extension .workspace,
+.app-shell--extension .explorer-grid,
 .app-shell--extension .ai-grid,
 .app-shell--sidepanel .workspace,
+.app-shell--sidepanel .explorer-grid,
 .app-shell--sidepanel .ai-grid {
   grid-template-columns: 1fr;
 }
@@ -617,10 +692,12 @@ button:disabled {
 }
 
 .app-shell--extension .control-panel,
+.app-shell--extension .explorer-panel,
 .app-shell--extension .results-panel,
 .app-shell--extension .ai-panel,
 .app-shell--extension .premium-panel,
 .app-shell--sidepanel .control-panel,
+.app-shell--sidepanel .explorer-panel,
 .app-shell--sidepanel .results-panel,
 .app-shell--sidepanel .ai-panel,
 .app-shell--sidepanel .premium-panel {
@@ -709,6 +786,10 @@ button:disabled {
   }
 
   .docs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .explorer-grid {
     grid-template-columns: 1fr;
   }
 

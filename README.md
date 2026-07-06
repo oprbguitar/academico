@@ -13,7 +13,8 @@ https://oprbguitar.github.io/academico/
 ## Uso rapido
 
 - Demo web: abrir `index.html` o publicar el repositorio con GitHub Pages.
-- Extension Chrome: cargar esta carpeta como extension sin empaquetar desde `chrome://extensions`.
+- Descargar app: usar `dist/academic-finder-ia-extension.zip` desde la pagina de GitHub Pages.
+- Extension Chrome: descomprimir el ZIP y cargar la carpeta como extension sin empaquetar desde `chrome://extensions`.
 - Clave demo de creador: `PERULABS-CREATOR-2026`.
 
 La clave de creador es solo para demostracion, pruebas y presentaciones comerciales. La logica de activacion es intencionalmente simple para una version estatica y esta aislada para poder reemplazarse despues por licencias con backend.
@@ -30,6 +31,8 @@ La clave de creador es solo para demostracion, pruebas y presentaciones comercia
 - Captura de texto seleccionado o contenido visible de la pagina actual en la extension.
 - Side panel de Chrome para mantener Academic Finder IA abierto junto a paginas academicas.
 - Guardado de fuentes, generacion de citas y exportacion JSON/CSV/BibTeX.
+- Explorador de fuentes con rutas rapidas para tesis, articulos, instituciones y confiabilidad.
+- Boton Buscar y soporte Enter para que la busqueda no se interrumpa mientras el usuario escribe.
 
 ## Archivos principales
 
@@ -37,6 +40,7 @@ La clave de creador es solo para demostracion, pruebas y presentaciones comercia
 - `popup.html`: interfaz principal de la extension.
 - `sidepanel.html`: version lateral/pineada.
 - `manifest.json`: configuracion Chrome MV3.
+- `dist/academic-finder-ia-extension.zip`: paquete descargable desde GitHub Pages.
 - `src/app.js`: logica compartida de busqueda, premium, IA, citas y exportacion.
 - `src/providerMetadata.js`: configuracion mantenible de proveedores, categorias y notas.
 - `src/styles.css`: estilos responsive en espanol.

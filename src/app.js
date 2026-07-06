@@ -77,12 +77,37 @@
       abstract: "Explica indicadores de calidad, citas, arbitraje y trazabilidad metodologica.",
       methodology: "Ensayo metodologico",
       reliability: "Media-alta: buena base teorica, no presenta datos nuevos."
+    },
+    {
+      id: "s7",
+      title: "Uso de repositorios academicos para revision de literatura en tesis",
+      author: "Paola Benites",
+      institution: "Universidad Peruana Cayetano Heredia",
+      date: "2026-01-30",
+      type: "Guia",
+      url: "https://example.edu/repositorios-revision-literatura",
+      abstract: "Presenta un flujo practico para explorar repositorios, filtrar fuentes y organizar evidencia para tesis.",
+      methodology: "Guia aplicada con criterios de evaluacion",
+      reliability: "Media-alta: util como guia, verificar cada fuente primaria."
+    },
+    {
+      id: "s8",
+      title: "Evaluacion de articulos cientificos con matrices de relevancia academica",
+      author: "Rafael Molina; Sofia Acosta",
+      institution: "Universidad de Buenos Aires",
+      date: "2025-05-19",
+      type: "Articulo",
+      url: "https://example.edu/matrices-relevancia-academica",
+      abstract: "Describe una matriz para clasificar fuentes por actualidad, metodologia, citabilidad y pertinencia.",
+      methodology: "Diseno metodologico y validacion por expertos",
+      reliability: "Alta: criterios claros y validacion documentada."
     }
   ];
 
   const state = {
     query: "",
     mode: "exact",
+    sourceType: "all",
     pageSize: 10,
     page: 1,
     premium: false,
@@ -106,6 +131,29 @@
     "Tesista",
     "Docente",
     "Asesor academico"
+  ];
+
+  const explorerRoutes = [
+    {
+      title: "Explorar tesis",
+      query: "repositorio tesis universidad",
+      description: "Encuentra tesis, autores, instituciones y temas para marco teorico."
+    },
+    {
+      title: "Explorar articulos",
+      query: "articulo metodologia revision sistematica",
+      description: "Prioriza papers con metodologia, fecha y datos de citacion claros."
+    },
+    {
+      title: "Explorar instituciones",
+      query: "Universidad Nacional Mayor de San Marcos",
+      description: "Busca por universidad, repositorio, facultad o entidad publica."
+    },
+    {
+      title: "Explorar confiabilidad",
+      query: "criterios de confiabilidad fuentes academicas",
+      description: "Filtra fuentes con advertencias de fiabilidad y uso academico."
+    }
   ];
 
   function normalize(value) {
@@ -152,6 +200,7 @@
     return sources
       .map((source) => ({ ...source, score: scoreSource(source, state.query, state.mode) }))
       .filter((source) => source.score > 0)
+      .filter((source) => state.sourceType === "all" || source.type === state.sourceType)
       .sort((a, b) => new Date(b.date) - new Date(a.date) || b.score - a.score);
   }
 
@@ -185,16 +234,35 @@
 
       ${!state.premium && !state.premiumDismissed ? premiumBanner() : ""}
 
+      <section class="explorer-panel" aria-label="Explorador academico">
+        <div class="section-heading compact-heading">
+          <h2>Explorador academico</h2>
+          <p>Rutas rapidas para revisar tesis, articulos, instituciones y criterios de confiabilidad sin perder el orden por resultados recientes.</p>
+        </div>
+        <div class="explorer-grid">
+          ${explorerRoutes.map(explorerCard).join("")}
+        </div>
+      </section>
+
       <section id="demo" class="workspace">
         <aside class="control-panel">
-          <label class="field">
-            <span>Busqueda academica</span>
-            <input data-field="query" type="search" value="${escapeHtml(state.query)}" placeholder="Autor, titulo exacto, institucion o tema">
-          </label>
+          <form class="search-form" data-action="search-submit">
+            <label class="field">
+              <span>Busqueda academica</span>
+              <input data-field="query" type="search" value="${escapeHtml(state.query)}" placeholder="Autor, titulo exacto, institucion o tema">
+            </label>
+            <button class="btn btn-primary" type="submit">Buscar</button>
+          </form>
           <div class="segmented" role="group" aria-label="Modo de busqueda">
             <button class="${state.mode === "exact" ? "active" : ""}" data-mode="exact">Busqueda exacta</button>
             <button class="${state.mode === "broad" ? "active" : ""}" data-mode="broad">Busqueda exploratoria</button>
           </div>
+          <label class="field">
+            <span>Tipo de fuente</span>
+            <select data-field="sourceType">
+              ${sourceTypeOptions().map((option) => `<option value="${option.value}" ${state.sourceType === option.value ? "selected" : ""}>${option.label}</option>`).join("")}
+            </select>
+          </label>
           <label class="field">
             <span>Resultados por pagina</span>
             <select data-field="pageSize">
@@ -305,11 +373,12 @@
         </a>
         <nav>
           <a href="#demo">Demo</a>
+          <a href="#descarga">Descargar</a>
           <a href="#instalacion">Instalacion</a>
           <a href="#extension">Chrome</a>
           <a href="#ia">IA</a>
         </nav>
-        <a class="btn btn-primary" href="https://github.com/oprbguitar/academico" target="_blank" rel="noreferrer">GitHub</a>
+        <a class="btn btn-primary" href="dist/academic-finder-ia-extension.zip" download>Descargar app</a>
       </header>
 
       <section id="inicio" class="docs-hero">
@@ -318,7 +387,7 @@
           <p>Demo publica y extension Chrome para buscar fuentes academicas, ordenar resultados desde lo mas reciente, generar citas y preparar resumenes IA breves en espanol.</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#demo">Probar demo</a>
-            <a class="btn btn-secondary" href="#instalacion">Ver instalacion</a>
+            <a class="btn btn-secondary" href="dist/academic-finder-ia-extension.zip" download>Descargar extension</a>
           </div>
         </div>
         <div class="docs-preview" aria-label="Vista previa de extension">
@@ -345,19 +414,32 @@
       <section id="demo" class="docs-section">
         <div class="section-heading">
           <h2>Demo funcional para GitHub Pages</h2>
-          <p>Esta misma interfaz se publica como pagina estatica y tambien alimenta el popup y panel lateral de Chrome.</p>
+          <p>Usa el explorador, escribe una busqueda, presiona <strong>Buscar</strong> o Enter, filtra por tipo de fuente y exporta los resultados seleccionados.</p>
         </div>
         ${appMarkup}
       </section>
 
+      <section id="descarga" class="docs-section docs-two-col">
+        <div>
+          <h2>Descargar la app</h2>
+          <p>Descarga el paquete de extension Chrome listo para cargar en modo desarrollador. Incluye popup, panel lateral, buscador, exportacion, proveedor IA y configuracion premium demo.</p>
+          <a class="btn btn-primary" href="dist/academic-finder-ia-extension.zip" download>Descargar Academic Finder IA</a>
+        </div>
+        <div class="docs-note">
+          <h3>Contenido del paquete</h3>
+          <p><code>manifest.json</code>, <code>popup.html</code>, <code>sidepanel.html</code> y carpeta <code>src/</code>.</p>
+        </div>
+      </section>
+
       <section id="instalacion" class="docs-section docs-two-col">
         <div>
-          <h2>Instalacion</h2>
+          <h2>Como funciona</h2>
           <ol class="steps">
-            <li>Publica este repositorio con GitHub Pages desde la rama <code>main</code>.</li>
-            <li>Abre <code>chrome://extensions</code> y activa el modo desarrollador.</li>
-            <li>Carga la carpeta del repositorio como extension sin empaquetar.</li>
-            <li>Usa el popup o el boton <strong>Panel lateral</strong> para mantener la app abierta.</li>
+            <li>Descarga el ZIP desde esta pagina y descomprimelo en una carpeta.</li>
+            <li>Abre <code>chrome://extensions</code> y activa <strong>Modo desarrollador</strong>.</li>
+            <li>Presiona <strong>Cargar extension sin empaquetar</strong> y elige la carpeta descomprimida.</li>
+            <li>Abre el icono de Academic Finder IA o usa <strong>Panel lateral</strong> para trabajar junto a paginas academicas.</li>
+            <li>Busca por autor, titulo, institucion o tema; luego guarda, cita, exporta o analiza texto.</li>
           </ol>
         </div>
         <div class="docs-note">
@@ -398,6 +480,26 @@
         <p>${text}</p>
       </article>
     `;
+  }
+
+  function explorerCard(route) {
+    return `
+      <button class="explorer-card" data-explorer-query="${escapeHtml(route.query)}" type="button">
+        <span>${escapeHtml(route.title)}</span>
+        <small>${escapeHtml(route.description)}</small>
+      </button>
+    `;
+  }
+
+  function sourceTypeOptions() {
+    return [
+      { value: "all", label: "Todas las fuentes" },
+      { value: "Articulo", label: "Articulos" },
+      { value: "Tesis", label: "Tesis" },
+      { value: "Informe", label: "Informes" },
+      { value: "Libro", label: "Libros" },
+      { value: "Guia", label: "Guias" }
+    ];
   }
 
   function premiumBanner() {
@@ -565,6 +667,8 @@
       state.query = event.target.value;
       state.mode = inferMode(state.query);
       state.page = 1;
+      persist();
+      return;
     } else if (field === "pageSize") {
       state.pageSize = Number(event.target.value);
       state.page = 1;
@@ -580,12 +684,26 @@
       const id = event.target.dataset.select;
       event.target.checked ? state.selected.add(id) : state.selected.delete(id);
       render();
+    } else if (event.target.dataset.field === "sourceType") {
+      state.sourceType = event.target.value;
+      state.page = 1;
+      persist();
+      render();
     }
   });
 
   root.addEventListener("click", async (event) => {
     const actionTarget = event.target.closest("[data-action], [data-mode]");
-    if (!actionTarget) return;
+    const explorerTarget = event.target.closest("[data-explorer-query]");
+    if (!actionTarget && !explorerTarget) return;
+    if (actionTarget?.tagName === "FORM") return;
+    if (explorerTarget) {
+      state.query = explorerTarget.dataset.explorerQuery || "";
+      state.mode = inferMode(state.query);
+      state.page = 1;
+      persist();
+      return render();
+    }
     const action = actionTarget.dataset.action;
     if (actionTarget.dataset.mode) {
       state.mode = actionTarget.dataset.mode;
@@ -606,6 +724,17 @@
     else if (action === "run-ai") generateSummary();
     else if (action === "capture-page") return capturePageText();
     else if (action === "open-sidepanel") return openSidePanel();
+    persist();
+    render();
+  });
+
+  root.addEventListener("submit", (event) => {
+    if (!event.target.matches('[data-action="search-submit"]')) return;
+    event.preventDefault();
+    const input = event.target.querySelector('[data-field="query"]');
+    state.query = input?.value || "";
+    state.mode = inferMode(state.query);
+    state.page = 1;
     persist();
     render();
   });
