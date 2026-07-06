@@ -2,6 +2,14 @@
 
 Demo web para GitHub Pages y extension Chrome MV3 para buscar, ordenar, guardar, citar, exportar y analizar fuentes academicas en espanol.
 
+## GitHub Pages
+
+Publica la rama `main` desde la carpeta raiz del repositorio. La pagina principal es:
+
+https://oprbguitar.github.io/academico/
+
+`index.html` contiene la documentacion comercial y la demo funcional. No requiere build ni dependencias.
+
 ## Uso rapido
 
 - Demo web: abrir `index.html` o publicar el repositorio con GitHub Pages.

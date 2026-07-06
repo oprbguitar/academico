@@ -171,7 +171,7 @@
     state.page = Math.min(state.page, totalPages);
     const pageResults = results.slice((state.page - 1) * state.pageSize, state.page * state.pageSize);
     const provider = providers[state.provider] || {};
-    root.innerHTML = `
+    const appMarkup = `
       <section class="hero">
         <div>
           <h1>Academic Finder IA</h1>
@@ -292,6 +292,111 @@
           <p class="fine-print">Sistema demo no seguro para produccion. La validacion real debe moverse a un backend de licencias.</p>
         </section>
       </section>
+    `;
+    root.innerHTML = surface === "web" ? renderDocsPage(appMarkup) : appMarkup;
+  }
+
+  function renderDocsPage(appMarkup) {
+    return `
+      <header class="docs-nav">
+        <a class="brand" href="#inicio" aria-label="Academic Finder IA">
+          <span class="brand-mark">AF</span>
+          <span>Academic Finder IA</span>
+        </a>
+        <nav>
+          <a href="#demo">Demo</a>
+          <a href="#instalacion">Instalacion</a>
+          <a href="#extension">Chrome</a>
+          <a href="#ia">IA</a>
+        </nav>
+        <a class="btn btn-primary" href="https://github.com/oprbguitar/academico" target="_blank" rel="noreferrer">GitHub</a>
+      </header>
+
+      <section id="inicio" class="docs-hero">
+        <div>
+          <h1>Documentacion de Academic Finder IA</h1>
+          <p>Demo publica y extension Chrome para buscar fuentes academicas, ordenar resultados desde lo mas reciente, generar citas y preparar resumenes IA breves en espanol.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#demo">Probar demo</a>
+            <a class="btn btn-secondary" href="#instalacion">Ver instalacion</a>
+          </div>
+        </div>
+        <div class="docs-preview" aria-label="Vista previa de extension">
+          <div class="preview-bar">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="preview-panel">
+            <strong>Panel lateral Chrome</strong>
+            <p>Abierto junto a repositorios, tesis, papers y paginas institucionales.</p>
+            <div class="mini-control">Busqueda exacta</div>
+            <div class="mini-result"></div>
+            <div class="mini-result short"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="docs-grid" aria-label="Funciones principales">
+        ${docsCard("Orden reciente", "Los resultados se muestran desde la fecha de busqueda hacia fuentes mas antiguas.")}
+        ${docsCard("Precision", "Busqueda exacta para nombres, autores, instituciones, frases y titulos especificos.")}
+        ${docsCard("Paginacion", "Selector claro de 10, 50 o 100 resultados por pagina en demo y extension.")}
+        ${docsCard("Premium amable", "La ventana premium puede cerrarse y el modo basico sigue disponible.")}
+      </section>
+
+      <section id="demo" class="docs-section">
+        <div class="section-heading">
+          <h2>Demo funcional para GitHub Pages</h2>
+          <p>Esta misma interfaz se publica como pagina estatica y tambien alimenta el popup y panel lateral de Chrome.</p>
+        </div>
+        ${appMarkup}
+      </section>
+
+      <section id="instalacion" class="docs-section docs-two-col">
+        <div>
+          <h2>Instalacion</h2>
+          <ol class="steps">
+            <li>Publica este repositorio con GitHub Pages desde la rama <code>main</code>.</li>
+            <li>Abre <code>chrome://extensions</code> y activa el modo desarrollador.</li>
+            <li>Carga la carpeta del repositorio como extension sin empaquetar.</li>
+            <li>Usa el popup o el boton <strong>Panel lateral</strong> para mantener la app abierta.</li>
+          </ol>
+        </div>
+        <div class="docs-note">
+          <h3>Clave demo</h3>
+          <p><code>PERULABS-CREATOR-2026</code></p>
+          <p>Solo sirve para pruebas, demo comercial y presentacion. No es autenticacion segura de produccion.</p>
+        </div>
+      </section>
+
+      <section id="extension" class="docs-section docs-two-col">
+        <div>
+          <h2>Extension Chrome</h2>
+          <p>El popup incluye busqueda, modo exacto/exploratorio, resultados por pagina, guardado, citas, exportacion, resumen IA premium, proveedor, perfil y captura de contenido visible.</p>
+        </div>
+        <div class="docs-note">
+          <h3>Panel lateral corregido</h3>
+          <p>La interfaz ahora usa ancho fluido, evita desbordamiento horizontal y se adapta cuando Chrome reduce el panel lateral.</p>
+        </div>
+      </section>
+
+      <section id="ia" class="docs-section docs-two-col">
+        <div>
+          <h2>IA y proveedores</h2>
+          <p>Los metadatos de proveedores viven en <code>src/providerMetadata.js</code> para actualizar modelos y notas sin tocar la interfaz principal.</p>
+        </div>
+        <div class="docs-note">
+          <h3>Perfiles</h3>
+          <p>Buscador academico, analista de investigacion, estudiante escolar, universitario, tesista, docente y asesor academico.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function docsCard(title, text) {
+    return `
+      <article class="docs-card">
+        <h3>${title}</h3>
+        <p>${text}</p>
+      </article>
     `;
   }
 

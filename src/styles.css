@@ -21,6 +21,18 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  overflow-x: hidden;
+}
+
+body[data-surface="extension"] {
+  width: 420px;
+  min-height: 600px;
+}
+
+body[data-surface="sidepanel"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
 }
 
 button,
@@ -38,9 +50,207 @@ textarea {
 
 .app-shell--extension,
 .app-shell--sidepanel {
-  width: 420px;
-  max-width: 100vw;
+  width: 100%;
+  max-width: none;
   padding: 12px;
+  overflow-x: hidden;
+}
+
+.docs-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 0;
+  background: rgba(247, 248, 251, 0.92);
+  backdrop-filter: blur(12px);
+}
+
+.brand,
+.docs-nav nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 850;
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+}
+
+.docs-nav nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.docs-hero {
+  min-height: 520px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 34px;
+  align-items: center;
+  padding: 72px 0 34px;
+}
+
+.docs-hero h1 {
+  max-width: 840px;
+  margin: 0;
+  font-size: clamp(44px, 7vw, 86px);
+  line-height: 0.94;
+  letter-spacing: 0;
+}
+
+.docs-hero p {
+  max-width: 720px;
+  margin: 22px 0;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1.55;
+}
+
+.docs-preview {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.preview-bar {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  background: #202625;
+}
+
+.preview-bar span {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #dfe7e4;
+  opacity: 0.85;
+}
+
+.preview-panel {
+  padding: 22px;
+}
+
+.preview-panel p {
+  margin: 8px 0 16px;
+  font-size: 14px;
+}
+
+.mini-control,
+.mini-result {
+  border-radius: 8px;
+  background: #edf5f2;
+}
+
+.mini-control {
+  width: 150px;
+  padding: 10px 12px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mini-result {
+  height: 74px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  background: linear-gradient(90deg, #f7faf9, #eef4f1);
+}
+
+.mini-result.short {
+  width: 74%;
+  height: 48px;
+}
+
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 22px 0 42px;
+}
+
+.docs-card,
+.docs-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 18px;
+  box-shadow: 0 8px 28px rgba(23, 42, 38, 0.06);
+}
+
+.docs-card h3,
+.docs-note h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.docs-card p,
+.docs-note p,
+.docs-section p,
+.steps {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.docs-section {
+  scroll-margin-top: 88px;
+  padding: 34px 0;
+}
+
+.section-heading {
+  max-width: 780px;
+  margin-bottom: 18px;
+}
+
+.docs-section h2,
+.section-heading h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.05;
+}
+
+.docs-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+.steps {
+  margin: 18px 0 0;
+  padding-left: 22px;
+}
+
+code {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: #f2f5f4;
+  color: var(--accent);
+  font-size: 0.92em;
 }
 
 .hero {
@@ -377,18 +587,21 @@ button:disabled {
 .app-shell--extension .hero,
 .app-shell--sidepanel .hero {
   min-height: auto;
-  padding: 20px;
+  padding: 16px;
   display: grid;
+  gap: 12px;
 }
 
 .app-shell--extension .hero h1,
 .app-shell--sidepanel .hero h1 {
-  font-size: 34px;
+  font-size: clamp(25px, 9vw, 34px);
+  line-height: 1;
 }
 
 .app-shell--extension .hero p,
 .app-shell--sidepanel .hero p {
   font-size: 14px;
+  margin-top: 10px;
 }
 
 .app-shell--extension .workspace,
@@ -403,10 +616,100 @@ button:disabled {
   grid-template-columns: 1fr;
 }
 
+.app-shell--extension .control-panel,
+.app-shell--extension .results-panel,
+.app-shell--extension .ai-panel,
+.app-shell--extension .premium-panel,
+.app-shell--sidepanel .control-panel,
+.app-shell--sidepanel .results-panel,
+.app-shell--sidepanel .ai-panel,
+.app-shell--sidepanel .premium-panel {
+  padding: 14px;
+}
+
+.app-shell--sidepanel .premium-banner,
+.app-shell--sidepanel .panel-head,
+.app-shell--extension .premium-banner,
+.app-shell--extension .panel-head {
+  display: grid;
+}
+
+.app-shell--sidepanel .button-row,
+.app-shell--sidepanel .card-actions,
+.app-shell--sidepanel .hero-actions,
+.app-shell--extension .button-row,
+.app-shell--extension .card-actions,
+.app-shell--extension .hero-actions {
+  align-items: stretch;
+}
+
+.app-shell--sidepanel .btn,
+.app-shell--sidepanel .card-actions button,
+.app-shell--sidepanel .card-actions a,
+.app-shell--extension .btn,
+.app-shell--extension .card-actions button,
+.app-shell--extension .card-actions a {
+  flex: 1 1 130px;
+  text-align: center;
+}
+
+.app-shell--sidepanel .result-card h3,
+.app-shell--extension .result-card h3 {
+  font-size: 16px;
+}
+
+@media (max-width: 360px) {
+  .app-shell--sidepanel {
+    padding: 8px;
+  }
+
+  .app-shell--sidepanel .hero,
+  .app-shell--sidepanel .control-panel,
+  .app-shell--sidepanel .results-panel,
+  .app-shell--sidepanel .ai-panel,
+  .app-shell--sidepanel .premium-panel,
+  .app-shell--sidepanel .premium-banner {
+    padding: 12px;
+  }
+
+  .segmented {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 860px) {
   .app-shell {
     width: min(100vw - 20px, 680px);
     padding-top: 10px;
+  }
+
+  .docs-nav {
+    align-items: flex-start;
+  }
+
+  .docs-nav,
+  .docs-nav nav,
+  .docs-hero,
+  .docs-two-col {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .docs-nav nav {
+    gap: 8px;
+  }
+
+  .docs-hero {
+    min-height: auto;
+    padding-top: 28px;
+  }
+
+  .docs-preview {
+    max-width: 430px;
+  }
+
+  .docs-grid {
+    grid-template-columns: 1fr;
   }
 
   .hero,
