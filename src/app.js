@@ -237,11 +237,17 @@
   }
 
   function getResults() {
-    return activeSources()
+    const base = activeSources()
+      .filter((source) => !isFutureDate(source.date))
+      .filter((source) => state.sourceType === "all" || source.type === state.sourceType);
+    // Los resultados en vivo ya vienen filtrados por relevancia desde cada repositorio;
+    // re-puntuarlos localmente descartaba casi todo. Solo se re-puntua la coleccion demo.
+    if (state.lastSearch) {
+      return base.sort((a, b) => sortableDate(b.date) - sortableDate(a.date));
+    }
+    return base
       .map((source) => ({ ...source, score: scoreSource(source, state.query, state.mode) }))
       .filter((source) => source.score > 0)
-      .filter((source) => !isFutureDate(source.date))
-      .filter((source) => state.sourceType === "all" || source.type === state.sourceType)
       .sort((a, b) => sortableDate(b.date) - sortableDate(a.date) || b.score - a.score);
   }
 
@@ -521,72 +527,75 @@
         </div>
       </section>
 
-      <section id="demo" class="workspace">
-        <section class="search-panel">
-          <form class="search-form toolbar-row" data-action="search-submit">
-            <label class="field grow">
-              <span>1. Que quieres encontrar</span>
-              <input data-field="query" type="search" value="${escapeHtml(state.query)}" placeholder="Autor, titulo, institucion o tema">
-            </label>
-            <button class="btn btn-primary" type="submit">Buscar</button>
-          </form>
-          <div class="quick-links toolbar-row">
-            ${explorerRoutes.map(explorerChip).join("")}
+      <section id="demo" class="search-panel">
+        <span class="step-badge">1</span>
+        <h2 class="panel-title">Busca en repositorios academicos</h2>
+        <form class="search-form toolbar-row" data-action="search-submit">
+          <label class="field grow">
+            <span>Autor, titulo, institucion o tema</span>
+            <input data-field="query" type="search" value="${escapeHtml(state.query)}" placeholder="Ej.: inteligencia artificial en educacion">
+          </label>
+          <button class="btn btn-primary btn-lg" type="submit">Buscar</button>
+        </form>
+        <div class="quick-links toolbar-row">
+          ${explorerRoutes.map(explorerChip).join("")}
+        </div>
+        <div class="toolbar-row">
+          <div class="segmented" role="group" aria-label="Modo de busqueda">
+            <button class="${state.mode === "exact" ? "active" : ""}" data-mode="exact">Exacta</button>
+            <button class="${state.mode === "broad" ? "active" : ""}" data-mode="broad">Exploratoria</button>
           </div>
-          <div class="toolbar-row">
-            <div class="segmented" role="group" aria-label="Modo de busqueda">
-              <button class="${state.mode === "exact" ? "active" : ""}" data-mode="exact">Exacta</button>
-              <button class="${state.mode === "broad" ? "active" : ""}" data-mode="broad">Exploratoria</button>
-            </div>
-            <label class="field inline">
-              <span>Tipo</span>
-              <select data-field="sourceType">
-                ${sourceTypeOptions().map((option) => `<option value="${option.value}" ${state.sourceType === option.value ? "selected" : ""}>${option.label}</option>`).join("")}
-              </select>
-            </label>
-            <label class="field inline">
-              <span>Por pagina</span>
-              <select data-field="pageSize">
-                ${[10, 50, 100].map((size) => `<option value="${size}" ${state.pageSize === size ? "selected" : ""}>${size}</option>`).join("")}
-              </select>
-            </label>
-          </div>
-          <p class="status-line">${statusLine()}</p>
-          <div class="toolbar-row">
-            <button class="btn btn-secondary" data-action="save-selected">Guardar</button>
-            <button class="btn btn-secondary" data-action="cite-selected">Citar</button>
-            <select data-field="exportFormat">
-              <option value="json" ${state.exportFormat === "json" ? "selected" : ""}>JSON</option>
-              <option value="csv" ${state.exportFormat === "csv" ? "selected" : ""}>CSV</option>
-              <option value="bibtex" ${state.exportFormat === "bibtex" ? "selected" : ""}>BibTeX</option>
+          <label class="field inline">
+            <span>Tipo de fuente</span>
+            <select data-field="sourceType">
+              ${sourceTypeOptions().map((option) => `<option value="${option.value}" ${state.sourceType === option.value ? "selected" : ""}>${option.label}</option>`).join("")}
             </select>
-            <button class="btn btn-primary" data-action="export-selected">Exportar seleccion</button>
-          </div>
-        </section>
+          </label>
+          <label class="field inline">
+            <span>Por pagina</span>
+            <select data-field="pageSize">
+              ${[10, 50, 100].map((size) => `<option value="${size}" ${state.pageSize === size ? "selected" : ""}>${size}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+        <p class="status-line">${statusLine()}</p>
+      </section>
 
-        <section class="results-panel">
-          <div class="panel-head">
-            <div>
-              <h2>2. Resultados</h2>
-              <p>${state.isSearching ? "Buscando en repositorios academicos..." : `${results.length} resultados, del mas reciente al mas antiguo`}</p>
-            </div>
-            <div class="pager">
-              <button data-action="prev-page" ${state.page === 1 ? "disabled" : ""}>Anterior</button>
-              <span>${state.page} / ${totalPages}</span>
-              <button data-action="next-page" ${state.page === totalPages ? "disabled" : ""}>Siguiente</button>
-            </div>
+      <section class="results-panel">
+        <span class="step-badge">2</span>
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title">Resultados</h2>
+            <p>${state.isSearching ? "Buscando en repositorios academicos..." : `${results.length} resultados, del mas reciente al mas antiguo`}</p>
           </div>
-          <div class="result-list">
-            ${state.isSearching ? '<div class="empty">Consultando OpenAlex, Crossref, DOAJ, arXiv y Semantic Scholar...</div>' : pageResults.map(resultCard).join("") || '<div class="empty">Sin resultados. Prueba busqueda exploratoria o una frase mas simple.</div>'}
+          <div class="pager">
+            <button data-action="prev-page" ${state.page === 1 ? "disabled" : ""}>Anterior</button>
+            <span>${state.page} / ${totalPages}</span>
+            <button data-action="next-page" ${state.page === totalPages ? "disabled" : ""}>Siguiente</button>
           </div>
-        </section>
+        </div>
+        <div class="toolbar-row results-actions">
+          <span class="actions-label">Con lo seleccionado:</span>
+          <button class="btn btn-secondary" data-action="save-selected">Guardar</button>
+          <button class="btn btn-secondary" data-action="cite-selected">Citar</button>
+          <select data-field="exportFormat">
+            <option value="json" ${state.exportFormat === "json" ? "selected" : ""}>JSON</option>
+            <option value="csv" ${state.exportFormat === "csv" ? "selected" : ""}>CSV</option>
+            <option value="bibtex" ${state.exportFormat === "bibtex" ? "selected" : ""}>BibTeX</option>
+          </select>
+          <button class="btn btn-secondary" data-action="export-selected">Exportar</button>
+        </div>
+        <div class="result-list">
+          ${state.isSearching ? '<div class="empty">Consultando OpenAlex, Crossref, DOAJ, Europe PMC, arXiv y Semantic Scholar...</div>' : pageResults.map(resultCard).join("") || '<div class="empty">Sin resultados. Prueba busqueda exploratoria o una frase mas simple.</div>'}
+        </div>
       </section>
 
       <section class="ai-panel">
+        <span class="step-badge">3</span>
         <div class="panel-head">
           <div>
-            <h2>3. Resumir con IA</h2>
-            <p>Pega tu propia API key del proveedor elegido para generar un resumen real.</p>
+            <h2 class="panel-title">Resume con IA</h2>
+            <p>Elige proveedor y modelo (los gratuitos dicen "Gratis"), pega tu API key y genera un resumen real.</p>
           </div>
         </div>
         <div class="provider-grid">
@@ -625,7 +634,16 @@
         <div class="output">${state.output ? escapeHtml(state.output).replace(/\n/g, "<br>") : "La respuesta aparecera aqui."}</div>
       </section>
     `;
-    root.innerHTML = surface === "web" ? renderDocsPage(appMarkup) : appMarkup;
+    root.innerHTML = surface === "web" ? renderDocsPage(appMarkup) : appMarkup + appFooter();
+  }
+
+  function appFooter() {
+    return `
+      <footer class="app-footer">
+        <span>Creado por <strong>Pierre R.</strong></span>
+        <a href="mailto:peru.labs.pe@gmail.com">peru.labs.pe@gmail.com</a>
+      </footer>
+    `;
   }
 
   function renderDocsPage(appMarkup) {
@@ -641,6 +659,7 @@
           <a href="#instalacion">Instalacion</a>
           <a href="#extension">Chrome</a>
           <a href="#ia">IA</a>
+          <a href="#contacto">Contacto</a>
         </nav>
         <a class="btn btn-primary" href="dist/academic-finder-ia-extension.zip" download>Descargar app</a>
       </header>
@@ -733,6 +752,18 @@
           <p>Buscador academico, analista de investigacion, estudiante escolar, universitario, tesista, docente y asesor academico.</p>
         </div>
       </section>
+
+      <footer id="contacto" class="docs-footer">
+        <div>
+          <strong>Academic Finder IA</strong>
+          <p>Buscador y resumidor academico gratuito y de codigo abierto.</p>
+        </div>
+        <div>
+          <strong>Creador</strong>
+          <p>Pierre R.</p>
+          <a href="mailto:peru.labs.pe@gmail.com">peru.labs.pe@gmail.com</a>
+        </div>
+      </footer>
     `;
   }
 
